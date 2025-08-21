@@ -43,6 +43,9 @@ export default function Home() {
             <Link href="/account" className="hover:text-white transition-colors">
               Account
             </Link>
+            <Link href="/accounts" className="hover:text-white transition-colors">
+              Connected Accounts
+            </Link>
           </div>
         </div>
       </div>
