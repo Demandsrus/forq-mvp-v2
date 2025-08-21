@@ -22,19 +22,19 @@ export const ProfileSchema = z.object({
   updated_at: z.string().datetime(),
 })
 
-export const ProfileInsertSchema = ProfileSchema.omit({ 
-  id: true, 
-  created_at: true, 
-  updated_at: true 
+export const ProfileInsertSchema = ProfileSchema.omit({
+  id: true,
+  created_at: true,
+  updated_at: true
 }).partial().extend({
   user_id: z.string().uuid(),
 })
 
-export const ProfileUpdateSchema = ProfileSchema.omit({ 
-  id: true, 
-  user_id: true, 
-  created_at: true, 
-  updated_at: true 
+export const ProfileUpdateSchema = ProfileSchema.omit({
+  id: true,
+  user_id: true,
+  created_at: true,
+  updated_at: true
 }).partial()
 
 // Dish Schema
@@ -62,6 +62,9 @@ export const DishSchema = z.object({
   taste: DishTasteSchema,
   url: z.string().url().optional(),
   image_url: z.string().url().optional(),
+  restaurant_id: z.string().uuid().optional().nullable(),
+  platform: z.enum(['doordash','ubereats','postmates','grubhub']).optional().nullable(),
+  price_cents: z.number().int().optional().nullable(),
 })
 
 export const DishInsertSchema = DishSchema.omit({ id: true }).partial().extend({
@@ -79,10 +82,55 @@ export const FavoriteSchema = z.object({
   created_at: z.string().datetime(),
 })
 
-export const FavoriteInsertSchema = FavoriteSchema.omit({ 
-  id: true, 
-  created_at: true 
+export const FavoriteInsertSchema = FavoriteSchema.omit({ id: true, created_at: true })
+
+// Linked Accounts Schema
+export const LinkedAccountSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  provider: z.enum(['doordash','ubereats','postmates','grubhub']),
+  external_user_id: z.string(),
+  access_token: z.string().optional().nullable(),
+  refresh_token: z.string().optional().nullable(),
+  expires_at: z.string().datetime().optional().nullable(),
+  created_at: z.string().datetime(),
 })
+
+export const LinkedAccountInsertSchema = LinkedAccountSchema.omit({ id: true, created_at: true })
+
+// Restaurants Schema
+export const RestaurantSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  platform: z.enum(['doordash','ubereats','postmates','grubhub']),
+  platform_restaurant_id: z.string().min(1),
+  cuisine: z.string().min(1),
+  address: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  postal_code: z.string().optional().nullable(),
+  lat: z.number().optional().nullable(),
+  lng: z.number().optional().nullable(),
+  hours: z.record(z.any()).optional().nullable(),
+  atmosphere: z.string().optional().nullable(),
+  rating: z.number().optional().nullable(),
+  review_count: z.number().int().optional().nullable(),
+  reservation_url: z.string().url().optional().nullable(),
+  image_url: z.string().url().optional().nullable(),
+})
+
+export const RestaurantInsertSchema = RestaurantSchema.omit({ id: true })
+
+// Reviews Schema
+export const ReviewSchema = z.object({
+  id: z.string().uuid(),
+  restaurant_id: z.string().uuid(),
+  stars: z.number().int().min(1).max(5),
+  text: z.string().optional().nullable(),
+  created_at: z.string().datetime(),
+})
+
+export const ReviewInsertSchema = ReviewSchema.omit({ id: true, created_at: true })
 
 // =============================================================================
 // TYPESCRIPT TYPES
@@ -164,6 +212,22 @@ export type Database = {
           created_at?: string
         }
       }
+      linked_accounts: {
+        Row: LinkedAccount
+        Insert: LinkedAccountInsert
+        Update: Partial<LinkedAccountInsert>
+      }
+      restaurants: {
+        Row: Restaurant
+        Insert: RestaurantInsert
+        Update: Partial<RestaurantInsert>
+      }
+      reviews: {
+        Row: Review
+        Insert: ReviewInsert
+        Update: Partial<ReviewInsert>
+      }
+
     }
   }
 }

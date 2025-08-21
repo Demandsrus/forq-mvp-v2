@@ -22,6 +22,27 @@ create table if not exists profiles (
   updated_at timestamptz default now()
 );
 
+-- Create restaurants table (needed before dishes FK)
+create table if not exists restaurants (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  platform text not null check (platform in ('doordash','ubereats','postmates','grubhub')),
+  platform_restaurant_id text not null,
+  cuisine text not null,
+  address text,
+  city text,
+  state text,
+  postal_code text,
+  lat double precision,
+  lng double precision,
+  hours jsonb,
+  atmosphere text,
+  rating numeric,
+  review_count int,
+  reservation_url text,
+  image_url text
+);
+
 -- Create dishes table
 create table if not exists dishes (
   id uuid primary key default uuid_generate_v4(),
@@ -33,7 +54,10 @@ create table if not exists dishes (
   macros jsonb,                        -- {"kcal":520,"protein":32,"carbs":55,"fat":18}
   taste jsonb,                         -- {"sweet_savory":0.2,"herby_umami":0.8,"crunchy_soft":0.4}
   url text,                            -- external link for now
-  image_url text
+  image_url text,
+  restaurant_id uuid references restaurants(id),
+  platform text check (platform in ('doordash','ubereats','postmates','grubhub')),
+  price_cents int
 );
 
 -- Create favorites table
@@ -44,19 +68,60 @@ create table if not exists favorites (
   created_at timestamptz default now()
 );
 
--- Add foreign key constraints
-alter table profiles add constraint profiles_user_id_fkey 
-  foreign key (user_id) references auth.users(id) on delete cascade;
+-- NEW: platforms user linking (MVP)
+create table if not exists linked_accounts (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null,
+  provider text not null check (provider in ('doordash','ubereats','postmates','grubhub')),
+  external_user_id text not null,
+  access_token text,
+  refresh_token text,
+  expires_at timestamptz,
+  created_at timestamptz default now(),
+  unique (user_id, provider)
+);
 
-alter table favorites add constraint favorites_user_id_fkey 
-  foreign key (user_id) references auth.users(id) on delete cascade;
 
-alter table favorites add constraint favorites_dish_id_fkey 
-  foreign key (dish_id) references dishes(id) on delete cascade;
+-- OPTIONAL: lightweight reviews
+create table if not exists reviews (
+  id uuid primary key default uuid_generate_v4(),
+  restaurant_id uuid not null references restaurants(id),
+  stars int check (stars between 1 and 5),
+  text text,
+  created_at timestamptz default now()
+);
 
--- Add unique constraint for user favorites
-alter table favorites add constraint favorites_user_dish_unique 
-  unique (user_id, dish_id);
+-- Add foreign key constraints (skip if they already exist)
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_user_id_fkey') then
+    alter table profiles add constraint profiles_user_id_fkey
+      foreign key (user_id) references auth.users(id) on delete cascade;
+  end if;
+
+  if not exists (select 1 from pg_constraint where conname = 'favorites_user_id_fkey') then
+    alter table favorites add constraint favorites_user_id_fkey
+      foreign key (user_id) references auth.users(id) on delete cascade;
+  end if;
+
+  if not exists (select 1 from pg_constraint where conname = 'favorites_dish_id_fkey') then
+    alter table favorites add constraint favorites_dish_id_fkey
+      foreign key (dish_id) references dishes(id) on delete cascade;
+  end if;
+end $$;
+
+-- Helpful indexes for FKs
+create index if not exists idx_dishes_restaurant_id on dishes(restaurant_id);
+create index if not exists idx_reviews_restaurant_id on reviews(restaurant_id);
+
+-- Add unique constraint for user favorites (skip if exists)
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'favorites_user_dish_unique') then
+    alter table favorites add constraint favorites_user_dish_unique
+      unique (user_id, dish_id);
+  end if;
+end $$;
 
 -- Enable Row Level Security
 alter table profiles enable row level security;
