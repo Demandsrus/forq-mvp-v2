@@ -67,9 +67,10 @@ export async function POST(request: NextRequest) {
       actualUserId = userData.user.id
     } else if (userError && userError.message.includes('already registered')) {
       // User exists, try to find them
-      const { data: existingUser } = await supabase.auth.admin.getUserByEmail(`${userId}@forq-mvp.local`)
-      if (existingUser?.user?.id) {
-        actualUserId = existingUser.user.id
+      const { data: existingUser } = await supabase.auth.admin.listUsers()
+      const foundUser = existingUser?.users?.find(u => u.email === `${userId}@forq-mvp.local`)
+      if (foundUser?.id) {
+        actualUserId = foundUser.id
       }
     } else if (userError) {
       console.error('Error creating user:', userError)

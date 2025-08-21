@@ -153,7 +153,7 @@ async function getRecommendedDishes(userProfile: Profile): Promise<Dish[]> {
   return data
     .filter(dish => {
       // Check if user has any allergies that match dish allergens
-      const hasAllergen = dish.allergens?.some(allergen => 
+      const hasAllergen = dish.allergens?.some((allergen: string) =>
         userProfile.allergy_tags.includes(allergen)
       )
       return !hasAllergen

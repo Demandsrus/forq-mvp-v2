@@ -98,6 +98,9 @@ export const LinkedAccountSchema = z.object({
 
 export const LinkedAccountInsertSchema = LinkedAccountSchema.omit({ id: true, created_at: true })
 
+export type LinkedAccount = z.infer<typeof LinkedAccountSchema>
+export type LinkedAccountInsert = z.infer<typeof LinkedAccountInsertSchema>
+
 // Restaurants Schema
 export const RestaurantSchema = z.object({
   id: z.string().uuid(),
@@ -121,6 +124,9 @@ export const RestaurantSchema = z.object({
 
 export const RestaurantInsertSchema = RestaurantSchema.omit({ id: true })
 
+export type Restaurant = z.infer<typeof RestaurantSchema>
+export type RestaurantInsert = z.infer<typeof RestaurantInsertSchema>
+
 // Reviews Schema
 export const ReviewSchema = z.object({
   id: z.string().uuid(),
@@ -131,6 +137,9 @@ export const ReviewSchema = z.object({
 })
 
 export const ReviewInsertSchema = ReviewSchema.omit({ id: true, created_at: true })
+
+export type Review = z.infer<typeof ReviewSchema>
+export type ReviewInsert = z.infer<typeof ReviewInsertSchema>
 
 // =============================================================================
 // TYPESCRIPT TYPES
