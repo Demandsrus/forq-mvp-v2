@@ -1,88 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import OpenAI from 'openai'
 
-// Mock recipe database - in production this would come from a real database
-const MOCK_RECIPES = [
-  {
-    id: '1',
-    title: 'Spicy Thai Basil Chicken',
-    description: 'A quick and flavorful stir-fry with fresh basil and chilies',
-    cookTime: '20 mins',
-    difficulty: 'Easy',
-    cuisine: 'Thai',
-    tags: ['Spicy', 'Quick', 'Protein'],
-    spiceLevel: 'Hot',
-    dietaryRestrictions: [],
-    mealType: 'Dinner'
-  },
-  {
-    id: '2',
-    title: 'Mediterranean Quinoa Bowl',
-    description: 'Healthy bowl with quinoa, vegetables, and tahini dressing',
-    cookTime: '25 mins',
-    difficulty: 'Easy',
-    cuisine: 'Mediterranean',
-    tags: ['Healthy', 'Vegetarian', 'Bowl'],
-    spiceLevel: 'Mild',
-    dietaryRestrictions: ['Vegetarian'],
-    mealType: 'Lunch'
-  },
-  {
-    id: '3',
-    title: 'Classic Margherita Pizza',
-    description: 'Homemade pizza with fresh mozzarella and basil',
-    cookTime: '45 mins',
-    difficulty: 'Medium',
-    cuisine: 'Italian',
-    tags: ['Vegetarian', 'Comfort Food'],
-    spiceLevel: 'Mild',
-    dietaryRestrictions: ['Vegetarian'],
-    mealType: 'Dinner'
-  },
-  {
-    id: '4',
-    title: 'Vegan Buddha Bowl',
-    description: 'Colorful bowl with roasted vegetables and tahini sauce',
-    cookTime: '30 mins',
-    difficulty: 'Easy',
-    cuisine: 'American',
-    tags: ['Vegan', 'Healthy', 'Bowl'],
-    spiceLevel: 'Mild',
-    dietaryRestrictions: ['Vegan', 'Vegetarian'],
-    mealType: 'Lunch'
-  },
-  {
-    id: '5',
-    title: 'Beef Tacos with Salsa',
-    description: 'Seasoned ground beef tacos with fresh salsa',
-    cookTime: '25 mins',
-    difficulty: 'Easy',
-    cuisine: 'Mexican',
-    tags: ['Protein', 'Quick', 'Comfort Food'],
-    spiceLevel: 'Medium',
-    dietaryRestrictions: [],
-    mealType: 'Dinner'
-  },
-  {
-    id: '6',
-    title: 'Chicken Curry',
-    description: 'Aromatic Indian curry with tender chicken',
-    cookTime: '40 mins',
-    difficulty: 'Medium',
-    cuisine: 'Indian',
-    tags: ['Spicy', 'Protein', 'Comfort Food'],
-    spiceLevel: 'Hot',
-    dietaryRestrictions: [],
-    mealType: 'Dinner'
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+})
+
+interface Dish {
+  id: string
+  name: string
+  cuisine: string
+  diet_tags: string[]
+  allergens: string[]
+  spice: number
+  macros: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
   }
-]
+  taste: {
+    sweet: number
+    savory: number
+    herby: number
+    umami: number
+    crunchy: number
+    soft: number
+  }
+  url: string
+  image_url: string
+}
+
+function calculateCompatibilityScore(dish: Dish, preferences: any): number {
+  let score = 0
+  let factors = 0
+
+  // Cuisine preference (weight: 3)
+  if (preferences.cuisinePreferences?.includes(dish.cuisine)) {
+    score += 3
+  }
+  factors += 1
+
+  // Spice level (weight: 2)
+  const spiceLevels = ['Mild', 'Medium', 'Hot', 'Extra Hot']
+  const userSpiceIndex = spiceLevels.indexOf(preferences.spiceLevel)
+  const dishSpiceIndex = Math.min(dish.spice, 3) // Convert 0-5 to 0-3
+
+  if (userSpiceIndex >= 0) {
+    const spiceDiff = Math.abs(userSpiceIndex - dishSpiceIndex)
+    const spiceScore = Math.max(0, 1 - spiceDiff / 3)
+    score += spiceScore * 2
+  }
+  factors += 2
+
+  // Diet compatibility (weight: 3)
+  if (preferences.dietaryRestrictions?.length > 0) {
+    const dietMatch = preferences.dietaryRestrictions.every((restriction: string) => {
+      if (restriction === 'Vegetarian') return dish.diet_tags.includes('vegetarian')
+      if (restriction === 'Vegan') return dish.diet_tags.includes('vegan')
+      if (restriction === 'Gluten-Free') return dish.diet_tags.includes('gluten-free')
+      return true
+    })
+    if (dietMatch) {
+      score += 3
+    } else {
+      score -= 2 // Penalty for not matching dietary restrictions
+    }
+  }
+  factors += 3
+
+  return factors > 0 ? score / factors : 0
+}
 
 export async function GET(request: NextRequest) {
   try {
-    
     // Get user from session
     const { data: { user } } = await supabase.auth.getUser()
-    const userId = user?.id || 'anonymous'
 
     // Get user's latest quiz responses
     let userPreferences = null
@@ -97,84 +90,136 @@ export async function GET(request: NextRequest) {
       userPreferences = data?.[0]?.responses
     }
 
-    // Filter and score recipes based on preferences
-    let recommendations = MOCK_RECIPES
+    // Fetch all dishes from Supabase
+    const { data: dishes, error } = await supabase
+      .from('dishes')
+      .select('*')
 
-    if (userPreferences) {
-      recommendations = MOCK_RECIPES
-        .map(recipe => {
-          let score = 0
-
-          // Cuisine preference matching
-          if (userPreferences.cuisinePreferences?.includes(recipe.cuisine)) {
-            score += 3
-          }
-
-          // Dietary restrictions matching
-          if (userPreferences.dietaryRestrictions?.length > 0) {
-            const hasMatchingRestriction = userPreferences.dietaryRestrictions.some((restriction: string) =>
-              recipe.dietaryRestrictions.includes(restriction)
-            )
-            if (hasMatchingRestriction) score += 2
-            
-            // Penalize if recipe doesn't match dietary restrictions
-            const hasConflictingRestriction = userPreferences.dietaryRestrictions.some((restriction: string) => {
-              if (restriction === 'Vegetarian' && !recipe.dietaryRestrictions.includes('Vegetarian') && recipe.tags.includes('Protein')) {
-                return true
-              }
-              if (restriction === 'Vegan' && !recipe.dietaryRestrictions.includes('Vegan')) {
-                return true
-              }
-              return false
-            })
-            if (hasConflictingRestriction) score -= 5
-          }
-
-          // Spice level matching
-          const spiceLevels = ['Mild', 'Medium', 'Hot', 'Extra Hot']
-          const userSpiceIndex = spiceLevels.indexOf(userPreferences.spiceLevel)
-          const recipeSpiceIndex = spiceLevels.indexOf(recipe.spiceLevel)
-          
-          if (userSpiceIndex >= 0 && recipeSpiceIndex >= 0) {
-            const spiceDiff = Math.abs(userSpiceIndex - recipeSpiceIndex)
-            score += Math.max(0, 2 - spiceDiff)
-          }
-
-          // Meal type matching
-          if (userPreferences.mealTypes?.includes(recipe.mealType)) {
-            score += 1
-          }
-
-          return { ...recipe, score }
-        })
-        .filter(recipe => recipe.score >= 0) // Remove recipes with negative scores
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 6) // Return top 6 recommendations
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json({ error: 'Failed to fetch dishes' }, { status: 500 })
     }
 
-    // Remove score from response (if it exists)
-    const cleanedRecommendations = recommendations.map(recipe => {
-      const { score, ...cleanRecipe } = recipe as any
-      return cleanRecipe
-    })
+    if (!dishes || dishes.length === 0) {
+      return NextResponse.json({
+        success: true,
+        recipes: [],
+        personalized: false,
+        message: 'No dishes available'
+      })
+    }
 
-    // Analytics temporarily disabled for deployment
+    // Calculate compatibility scores and sort
+    let recommendations = dishes
+
+    if (userPreferences) {
+      recommendations = dishes
+        .map(dish => ({
+          ...dish,
+          score: calculateCompatibilityScore(dish, userPreferences)
+        }))
+        .filter(dish => dish.score >= 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6)
+    } else {
+      // If no preferences, return random selection
+      recommendations = dishes
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 6)
+    }
+
+    // Convert dishes to recipe format for compatibility
+    const formattedRecipes = recommendations.map(dish => ({
+      id: dish.id,
+      title: dish.name,
+      description: `Delicious ${dish.cuisine} dish`,
+      cuisine: dish.cuisine,
+      tags: dish.diet_tags || [],
+      spiceLevel: ['Mild', 'Mild', 'Medium', 'Medium', 'Hot', 'Extra Hot'][dish.spice] || 'Mild',
+      dietaryRestrictions: dish.diet_tags || [],
+      image_url: dish.image_url,
+      url: dish.url,
+      macros: dish.macros
+    }))
 
     return NextResponse.json({
       success: true,
-      recipes: cleanedRecommendations,
-      personalized: !!userPreferences
+      recipes: formattedRecipes,
+      personalized: !!userPreferences,
+      totalDishes: dishes.length
     })
 
   } catch (error) {
     console.error('Error generating recommendations:', error)
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to generate recommendations' 
+      {
+        success: false,
+        error: 'Failed to generate recommendations'
       },
       { status: 500 }
     )
+  }
+}
+
+// Add POST method for direct preference-based recommendations
+export async function POST(request: NextRequest) {
+  try {
+    const { preferences } = await request.json()
+
+    // Fetch all dishes from Supabase
+    const { data: dishes, error } = await supabase
+      .from('dishes')
+      .select('*')
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json({ error: 'Failed to fetch dishes' }, { status: 500 })
+    }
+
+    if (!dishes || dishes.length === 0) {
+      return NextResponse.json({ recommendations: [], explanation: 'No dishes available' })
+    }
+
+    // Calculate compatibility scores
+    const scoredDishes = dishes.map(dish => ({
+      ...dish,
+      compatibilityScore: calculateCompatibilityScore(dish, preferences)
+    }))
+
+    // Sort by compatibility score and take top 5
+    const topDishes = scoredDishes
+      .sort((a, b) => b.compatibilityScore - a.compatibilityScore)
+      .slice(0, 5)
+
+    // Generate AI explanation
+    const dishNames = topDishes.map(d => d.name).join(', ')
+    const prompt = `Based on user preferences for ${JSON.stringify(preferences)}, explain why these dishes were recommended: ${dishNames}. Keep it conversational and under 100 words.`
+
+    let explanation = "These dishes match your taste preferences and dietary requirements!"
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 150,
+        temperature: 0.7,
+      })
+
+      explanation = completion.choices[0]?.message?.content || explanation
+    } catch (aiError) {
+      console.error('OpenAI error:', aiError)
+      // Continue with default explanation if AI fails
+    }
+
+    return NextResponse.json({
+      recommendations: topDishes,
+      explanation,
+      totalDishes: dishes.length
+    })
+
+  } catch (error) {
+    console.error('API error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
