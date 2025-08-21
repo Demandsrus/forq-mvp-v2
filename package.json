@@ -11,7 +11,9 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "db:migrate": "node scripts/print-migration.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "seed:restaurants": "node scripts/seed_restaurants.js",
+    "seed:reviews": "node scripts/seed_reviews.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.55.0",
