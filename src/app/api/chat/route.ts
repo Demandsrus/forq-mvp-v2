@@ -30,6 +30,53 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+/**
+ * Server-side guard: Filter out recipe-style content and focus on JSON intent
+ * Removes lines that look like generated recipes while preserving JSON structure
+ */
+function filterRecipeContent(content: string): string {
+  const lines = content.split('\n')
+  const filteredLines: string[] = []
+  let inJsonBlock = false
+  let braceCount = 0
+
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+
+    // Skip obvious recipe content patterns
+    if (
+      trimmedLine.match(/^(ingredients?|instructions?|directions?|steps?|recipe|cooking|preparation):/i) ||
+      trimmedLine.match(/^\d+\.\s/) || // Numbered steps
+      trimmedLine.match(/^-\s/) || // Bullet points
+      trimmedLine.match(/^(add|mix|cook|bake|fry|boil|simmer|heat|stir|combine)/i) ||
+      trimmedLine.match(/^\*\s/) // Asterisk bullets
+    ) {
+      continue
+    }
+
+    // Track JSON blocks
+    const openBraces = (line.match(/\{/g) || []).length
+    const closeBraces = (line.match(/\}/g) || []).length
+
+    if (openBraces > 0) {
+      inJsonBlock = true
+    }
+
+    braceCount += openBraces - closeBraces
+
+    // Include line if it's part of JSON or looks like valid response content
+    if (inJsonBlock || trimmedLine.includes('"intent"') || trimmedLine.includes('"reply"')) {
+      filteredLines.push(line)
+    }
+
+    if (braceCount <= 0 && inJsonBlock) {
+      inJsonBlock = false
+    }
+  }
+
+  return filteredLines.join('\n').trim() || content
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, history } = await request.json()
@@ -70,16 +117,34 @@ export async function POST(request: NextRequest) {
     const rawResponse = completion.choices[0]?.message?.content ||
       '{"intent": "general", "reply": "I\'m sorry, I couldn\'t generate a response. Please try again.", "context": {}}'
 
+    // Server-side guard: Filter out recipe-style content and extract JSON
+    const cleanedResponse = filterRecipeContent(rawResponse)
+
     // Parse JSON response
     let parsedResponse
     try {
-      parsedResponse = JSON.parse(rawResponse)
+      parsedResponse = JSON.parse(cleanedResponse)
     } catch (error) {
-      // Fallback if JSON parsing fails
-      parsedResponse = {
-        intent: "general",
-        reply: rawResponse,
-        context: {}
+      // Try to extract JSON from mixed content
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        try {
+          parsedResponse = JSON.parse(jsonMatch[0])
+        } catch {
+          // Final fallback
+          parsedResponse = {
+            intent: "general",
+            reply: cleanedResponse,
+            context: {}
+          }
+        }
+      } else {
+        // Fallback if JSON parsing fails
+        parsedResponse = {
+          intent: "general",
+          reply: cleanedResponse,
+          context: {}
+        }
       }
     }
 

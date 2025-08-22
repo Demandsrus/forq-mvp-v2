@@ -10,21 +10,23 @@ describe('Home Page', () => {
     expect(title).toBeInTheDocument()
   })
 
-  it('renders the start journey button', () => {
+  it('renders the get started button', () => {
     render(<Home />)
-    
-    const button = screen.getByRole('link', { name: /start your food journey/i })
+
+    const button = screen.getByRole('link', { name: /get started/i })
     expect(button).toBeInTheDocument()
-    expect(button).toHaveAttribute('href', '/quiz')
+    expect(button).toHaveAttribute('href', '/auth/signup')
   })
 
   it('renders navigation links', () => {
     render(<Home />)
-    
-    const chatLink = screen.getByRole('link', { name: /chat with ai/i })
-    const accountLink = screen.getByRole('link', { name: /account/i })
-    
-    expect(chatLink).toBeInTheDocument()
-    expect(accountLink).toBeInTheDocument()
+
+    const discoverLink = screen.getByRole('link', { name: /discover restaurants/i })
+    const signInLink = screen.getByRole('link', { name: /sign in/i })
+
+    expect(discoverLink).toBeInTheDocument()
+    expect(discoverLink).toHaveAttribute('href', '/discover')
+    expect(signInLink).toBeInTheDocument()
+    expect(signInLink).toHaveAttribute('href', '/auth/signin')
   })
 })
