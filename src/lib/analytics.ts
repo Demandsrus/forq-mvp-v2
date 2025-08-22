@@ -33,7 +33,7 @@ export const getServerAnalytics = async () => {
 }
 
 // Event types for type safety
-export type AnalyticsEvent = 
+export type AnalyticsEvent =
   | 'quiz_started'
   | 'quiz_completed'
   | 'recipe_favorited'
@@ -41,3 +41,7 @@ export type AnalyticsEvent =
   | 'chat_message_sent'
   | 'recommendation_viewed'
   | 'recommendation_clicked'
+  | 'restaurants_search'
+  | 'signup_attempted'
+  | 'signin_attempted'
+  | 'cta_clicked'
