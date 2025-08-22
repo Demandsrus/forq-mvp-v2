@@ -43,5 +43,7 @@ export type AnalyticsEvent =
   | 'recommendation_clicked'
   | 'restaurants_search'
   | 'signup_attempted'
+  | 'signup_completed'
   | 'signin_attempted'
+  | 'signin_completed'
   | 'cta_clicked'

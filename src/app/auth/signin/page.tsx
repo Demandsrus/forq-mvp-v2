@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import { analytics } from '@/lib/analytics'
 
 export default function SignIn() {
@@ -9,12 +11,43 @@ export default function SignIn() {
     email: '',
     password: ''
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    analytics.track('signin_attempted', { email: formData.email })
-    // TODO: Implement signin logic
-    console.log('Signin attempted:', formData)
+    setError('')
+    setLoading(true)
+
+    try {
+      analytics.track('signin_attempted', { email: formData.email })
+
+      // Sign in with Supabase
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (signInError) {
+        setError(signInError.message)
+        setLoading(false)
+        return
+      }
+
+      if (data.user) {
+        analytics.track('signin_completed', {
+          email: formData.email,
+          userId: data.user.id
+        })
+
+        // Redirect to main app
+        router.push('/quiz')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred')
+      setLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,6 +66,13 @@ export default function SignIn() {
             FORQ
           </h1>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-900/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -68,9 +108,10 @@ export default function SignIn() {
 
           <button
             type="submit"
-            className="w-full bg-white text-black py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            disabled={loading}
+            className="w-full bg-white text-black py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            SIGN IN
+            {loading ? 'SIGNING IN...' : 'SIGN IN'}
           </button>
         </form>
 
