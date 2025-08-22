@@ -47,3 +47,5 @@ export type AnalyticsEvent =
   | 'signin_attempted'
   | 'signin_completed'
   | 'cta_clicked'
+  | 'checkout_started'
+  | 'reservation_attempted'
