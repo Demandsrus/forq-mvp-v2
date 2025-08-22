@@ -22,13 +22,23 @@ export default function Home() {
         </p>
 
         <div className="space-y-4">
-          <Link
-            href="/auth/signup"
-            className="inline-block bg-white text-black px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-            onClick={() => analytics.track('cta_clicked', { location: 'home', action: 'signup' })}
-          >
-            Get Started
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/auth/signup"
+              className="inline-block bg-white text-black px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+              onClick={() => analytics.track('cta_clicked', { location: 'home', action: 'signup' })}
+            >
+              Get Started
+            </Link>
+
+            <Link
+              href="/discover"
+              className="inline-block bg-gray-800 text-white px-8 py-4 rounded-lg font-semibold hover:bg-gray-700 transition-colors border border-gray-600"
+              onClick={() => analytics.track('cta_clicked', { location: 'home', action: 'discover' })}
+            >
+              Discover Restaurants
+            </Link>
+          </div>
 
           <div className="text-gray-400">
             Already have an account?{' '}
