@@ -49,3 +49,7 @@ export type AnalyticsEvent =
   | 'cta_clicked'
   | 'checkout_started'
   | 'reservation_attempted'
+  | 'discover_view'
+  | 'restaurant_card_open'
+  | 'restaurant_checkout_click'
+  | 'restaurant_reserve_click'
