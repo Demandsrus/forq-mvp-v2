@@ -136,10 +136,10 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
   }
 
   return (
-    <Card className="bg-[#121212] border-gray-800 text-white overflow-hidden">
-      <CardHeader className="p-0">
+    <Card className="bg-[#121212] border-gray-800 text-white overflow-hidden w-full">
+      <div className="flex flex-col md:flex-row">
         {/* Restaurant Image */}
-        <div className="relative h-48 w-full">
+        <div className="relative h-48 md:h-40 md:w-64 flex-shrink-0">
           <Image
             src={info.image_url || '/placeholder-restaurant.svg'}
             alt={info.name}
@@ -150,7 +150,7 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
               target.src = '/placeholder-restaurant.svg'
             }}
           />
-          
+
           {/* Platform Badge */}
           <div className="absolute top-3 right-3">
             <Image
@@ -163,43 +163,48 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
           </div>
         </div>
 
-        {/* Header Info */}
-        <div className="p-4 pb-2">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h3 className="text-lg font-semibold">{info.name}</h3>
-              <p className="text-gray-400 text-sm">{info.atmosphere}</p>
+        {/* Restaurant Content */}
+        <div className="flex-1 p-4">
+          {/* Header Info */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold mb-1">{info.name}</h3>
+              <p className="text-gray-400 text-sm mb-2">{info.atmosphere}</p>
+              <p className="text-gray-400 text-xs">
+                {info.address}, {info.city}, {info.state}
+              </p>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="text-yellow-400">★</span>
-              <span className="text-sm">{info.rating?.toFixed(1) || 'N/A'}</span>
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-1">
+                <span className="text-yellow-400">★</span>
+                <span className="text-sm">{info.rating?.toFixed(1) || 'N/A'}</span>
+              </div>
+              <Badge variant="secondary" className="bg-gray-800 text-gray-300 text-xs">
+                {info.platform}
+              </Badge>
             </div>
           </div>
-          
-          <Badge variant="secondary" className="bg-gray-800 text-gray-300">
-            {info.platform}
-          </Badge>
-        </div>
-      </CardHeader>
 
-      <CardContent className="p-4 pt-0">
-        {/* Quick Info */}
-        <p className="text-gray-400 text-sm mb-4">
-          {info.address}, {info.city}, {info.state}
-        </p>
+          {/* Action Buttons */}
+          <div className="flex gap-2 mb-3">
+            <Button
+              variant="outline"
+              onClick={handleCardOpen}
+              className="flex-1 border-gray-700 text-white hover:bg-gray-800 text-sm"
+            >
+              {isExpanded ? 'Show Less' : 'View Details'}
+            </Button>
+            <Button
+              onClick={handleCheckout}
+              className="flex-1 bg-white text-black hover:bg-gray-100 text-sm font-semibold"
+            >
+              Order Now
+            </Button>
+          </div>
 
-        {/* Expand/Collapse Button */}
-        <Button
-          variant="outline"
-          onClick={handleCardOpen}
-          className="w-full mb-4 border-gray-700 text-white hover:bg-gray-800"
-        >
-          {isExpanded ? 'Show Less' : 'View Details'}
-        </Button>
-
-        {/* Expanded Content */}
-        {isExpanded && (
-          <Tabs defaultValue="overview" className="w-full">
+          {/* Expanded Content */}
+          {isExpanded && (
+            <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-4 bg-gray-800">
               <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
               <TabsTrigger value="recommended" className="text-xs">Recommended</TabsTrigger>
@@ -281,13 +286,10 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
         )}
 
         {/* Primary CTA */}
-        <Button
-          onClick={handleCheckout}
-          className="w-full mt-4 bg-white text-black hover:bg-gray-100"
-        >
-          Proceed to Checkout
-        </Button>
-      </CardContent>
+            </Tabs>
+          )}
+        </div>
+      </div>
     </Card>
   )
 }

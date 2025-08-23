@@ -98,6 +98,56 @@ export default function DiscoverPage() {
     } catch (err) {
       setError('Failed to load restaurants. Please try again.')
       console.error('Error loading restaurants:', err)
+
+      // Fallback mock data for development
+      setRestaurants([
+        {
+          restaurant: {
+            id: 'mock1',
+            name: 'Tony\'s Pizza Palace',
+            platform: 'ubereats',
+            image_url: '/placeholder-restaurant.svg',
+            address: '123 Main St',
+            city: 'San Francisco',
+            state: 'CA',
+            postal_code: '94102',
+            hours: { mon: [['11:00', '22:00']] },
+            atmosphere: 'Casual dining',
+            rating: 4.5,
+            review_count: 150,
+            platform_badge: '/assets/platforms/ubereats.svg'
+          },
+          overview: {
+            summary: 'Authentic Italian pizza with fresh ingredients',
+            hours: { mon: [['11:00', '22:00']] },
+            atmosphere: 'Casual dining'
+          },
+          recommended_items: [
+            {
+              id: 'item1',
+              name: 'Margherita Pizza',
+              macros: { kcal: 800, protein: 30, carbs: 100, fat: 25 },
+              spice: 1,
+              price_cents: 1599,
+              url: 'https://ubereats.com/item1',
+              reason: 'Perfect classic choice',
+              score: 85
+            }
+          ],
+          reviews_preview: [
+            { stars: 5, text: 'Amazing pizza!' },
+            { stars: 4, text: 'Great atmosphere' }
+          ],
+          reservation: {
+            available: false,
+            url: null
+          },
+          checkout: {
+            platform: 'ubereats',
+            deeplink: 'https://ubereats.com/restaurant/tonys-pizza'
+          }
+        }
+      ])
     } finally {
       setLoading(false)
     }
@@ -168,7 +218,7 @@ export default function DiscoverPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-6">
             {restaurants.map((restaurant) => (
               <RestaurantCard
                 key={restaurant.restaurant.id}
