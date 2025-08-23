@@ -1,5 +1,3 @@
-import { PostHog } from 'posthog-node'
-
 // Client-side PostHog instance (lazy loaded)
 let posthogClient: any = null
 
@@ -61,15 +59,11 @@ export const analytics = {
   }
 }
 
-// Server-side analytics helper
+// Server-side analytics helper (simplified for now)
 export const getServerAnalytics = async () => {
-  if (!process.env.POSTHOG_KEY) {
-    return null
-  }
-
-  return new PostHog(process.env.POSTHOG_KEY, {
-    host: process.env.POSTHOG_HOST || 'https://app.posthog.com'
-  })
+  // For now, we'll handle server-side analytics differently
+  // to avoid module loading issues with PostHog Node
+  return null
 }
 
 // Event types for type safety

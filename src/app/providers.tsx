@@ -1,11 +1,17 @@
 'use client'
 
 import { useEffect } from 'react'
-import { initPostHog } from '@/lib/analytics'
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    initPostHog()
+    // Initialize PostHog only on client side
+    if (typeof window !== 'undefined') {
+      import('@/lib/analytics').then(({ initPostHog }) => {
+        initPostHog()
+      }).catch((error) => {
+        console.warn('Failed to initialize analytics:', error)
+      })
+    }
   }, [])
 
   return <>{children}</>
