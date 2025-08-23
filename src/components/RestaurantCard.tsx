@@ -283,10 +283,6 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
               </div>
             </TabsContent>
           </Tabs>
-        )}
-
-        {/* Primary CTA */}
-            </Tabs>
           )}
         </div>
       </div>
