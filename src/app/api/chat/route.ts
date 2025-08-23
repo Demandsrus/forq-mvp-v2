@@ -1,29 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import OpenAI from 'openai'
-
-const FORQ_MVP_SYSTEM_PROMPT = `You are Edith, FORQ's AI food assistant. You help users with food recommendations, cooking advice, and restaurant suggestions.
-
-When users ask for restaurant recommendations, food suggestions, or anything related to finding places to eat, respond with intent "get_recs" and include relevant context.
-
-Always respond with valid JSON in this format:
-{
-  "intent": "general" | "get_recs",
-  "reply": "Your helpful response to the user",
-  "context": {
-    "craving": "extracted food/cuisine type if mentioned",
-    "mood": "extracted mood/occasion if mentioned",
-    "time_of_day": "breakfast|lunch|dinner|late_night if mentioned",
-    "budget": "$|$$|$$$" if mentioned
-  }
-}
-
-Examples:
-- "I want pizza" → intent: "get_recs", context: {"craving": "pizza"}
-- "What's good for dinner?" → intent: "get_recs", context: {"time_of_day": "dinner"}
-- "How do I cook pasta?" → intent: "general", context: {}
-
-Be helpful, friendly, and concise. Focus on practical advice.`
+import { FORQ_MVP_SYSTEM_PROMPT } from '@/lib/prompts/forq'
+import { sanitizeAssistantReply, stripCookingLanguage } from '@/lib/guardrails'
+import { applySafetyFilter } from '@/lib/recs_safety'
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -148,6 +128,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Apply guardrails to sanitize the response
+    let sanitized = false
+    const sanitizeResult = sanitizeAssistantReply(parsedResponse.reply || '')
+
+    if (!sanitizeResult.ok) {
+      // Override with safe message
+      parsedResponse.reply = sanitizeResult.cleaned
+      sanitized = true
+
+      // If intent was not get_recs, force it to get_recs for safety
+      if (parsedResponse.intent !== 'get_recs') {
+        parsedResponse.intent = 'get_recs'
+        parsedResponse.context = { topK: 3 }
+      }
+    } else {
+      // Strip any residual cooking language
+      parsedResponse.reply = stripCookingLanguage(parsedResponse.reply || '')
+    }
+
     let restaurants = undefined
 
     // If intent is get_recs, call restaurant search API
@@ -171,7 +170,9 @@ export async function POST(request: NextRequest) {
 
         if (searchResponse.ok) {
           const searchData = await searchResponse.json()
-          restaurants = searchData.results
+          // Apply safety filter to remove any cooking/recipe content
+          const safeData = applySafetyFilter(searchData)
+          restaurants = safeData.results
         }
       } catch (error) {
         console.error('Error calling restaurant search:', error)
@@ -183,7 +184,8 @@ export async function POST(request: NextRequest) {
       success: true,
       reply: parsedResponse.reply,
       json: parsedResponse,
-      restaurants: restaurants
+      restaurants: restaurants,
+      sanitized: sanitized
     })
 
   } catch (error) {

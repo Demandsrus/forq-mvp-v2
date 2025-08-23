@@ -54,6 +54,7 @@ export default function DiscoverPage() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [sanitized, setSanitized] = useState(false)
 
   useEffect(() => {
     loadRestaurants()
@@ -93,6 +94,7 @@ export default function DiscoverPage() {
 
       const data = await response.json()
       setRestaurants(data.results || [])
+      setSanitized(data.sanitized || false)
     } catch (err) {
       setError('Failed to load restaurants. Please try again.')
       console.error('Error loading restaurants:', err)
@@ -148,6 +150,11 @@ export default function DiscoverPage() {
           <p className="text-gray-400">
             Personalized recommendations for {inferTimeOfDay()}
           </p>
+          {sanitized && (
+            <div className="mt-2 text-sm text-gray-500 bg-gray-900/50 px-3 py-2 rounded-lg border border-gray-800">
+              ℹ️ Showing delivery options (FORQ doesn't provide recipes or benefits info).
+            </div>
+          )}
         </div>
 
         {restaurants.length === 0 ? (

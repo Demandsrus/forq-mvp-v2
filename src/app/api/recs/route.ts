@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { rankDishes } from '@/lib/ranker/rankDishes'
+import { applySafetyFilter } from '@/lib/recs_safety'
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
@@ -110,11 +111,13 @@ async function handleRestaurantSpecificRecs(restaurantId: string, userId?: strin
     }))
   }
 
-  return NextResponse.json({
+  const safeResponse = applySafetyFilter({
     success: true,
     recommended_items: topDishes,
     personalized: !!userProfile
   })
+
+  return NextResponse.json(safeResponse)
 }
 
 interface Dish {
@@ -260,13 +263,15 @@ export async function GET(request: NextRequest) {
       dietaryRestrictions: dish.diet_tags || []
     }))
 
-    return NextResponse.json({
+    const safeResponse = applySafetyFilter({
       success: true,
       recipes: flatDishes, // Legacy compatibility
       dishes: flatDishes,  // New flat format
       personalized: !!userPreferences,
       totalDishes: dishes.length
     })
+
+    return NextResponse.json(safeResponse)
 
   } catch (error) {
     console.error('Error generating recommendations:', error)
@@ -352,13 +357,15 @@ export async function POST(request: NextRequest) {
       compatibilityScore: dish.compatibilityScore || 0
     }))
 
-    return NextResponse.json({
+    const safeResponse = applySafetyFilter({
       recommendations: topDishes, // Legacy format
       recipes: flatDishes,        // Legacy compatibility
       dishes: flatDishes,         // New flat format
       explanation,
       totalDishes: dishes.length
     })
+
+    return NextResponse.json(safeResponse)
 
   } catch (error) {
     console.error('API error:', error)

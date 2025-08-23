@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { rankDishes } from '@/lib/ranker/rankDishes'
 import { resolveContext, generateSearchTerms, getPlatformBadge, type SearchContext } from '@/lib/context'
 import { analytics } from '@/lib/analytics'
+import { applySafetyFilter } from '@/lib/recs_safety'
 
 interface RestaurantSearchRequest {
   userId: string
@@ -303,10 +304,13 @@ export async function POST(request: NextRequest) {
       time_of_day: resolvedContext.time_of_day
     })
 
-    return NextResponse.json({
+    // Apply safety filter to remove any cooking/recipe content
+    const safeResponse = applySafetyFilter({
       results,
       context_used: resolvedContext
     })
+
+    return NextResponse.json(safeResponse)
 
   } catch (error) {
     console.error('Restaurant search error:', error)
