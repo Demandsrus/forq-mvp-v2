@@ -32,37 +32,25 @@ export default function SignUp() {
       return
     }
 
-    const { success, error: signUpError } = await signUp(
-      formData.email,
-      formData.password,
-      formData.fullName
-    )
+    try {
+      const { success, error: signUpError } = await signUp(
+        formData.email,
+        formData.password,
+        formData.fullName
+      )
 
-    if (success) {
-      // Redirect to quiz or discover page
-      router.push('/quiz')
-    } else if (signUpError) {
-      setLocalError(signUpError)
-    }
-
-      if (signUpError) {
-        setError(signUpError.message)
-        setLoading(false)
-        return
-      }
-
-      if (data.user) {
+      if (success) {
         analytics.track('signup_completed', {
-          email: formData.email,
-          userId: data.user.id
+          email: formData.email
         })
 
-        // Redirect to quiz or main app
+        // Redirect to quiz or discover page
         router.push('/quiz')
+      } else if (signUpError) {
+        setLocalError(signUpError)
       }
     } catch (err) {
-      setError('An unexpected error occurred')
-      setLoading(false)
+      setLocalError('An unexpected error occurred')
     }
   }
 
