@@ -11,12 +11,25 @@ export const initPostHog = () => {
         person_profiles: 'identified_only',
         capture_pageview: false, // We'll handle this manually
         capture_pageleave: true,
+        disable_session_recording: true, // Disable session recording for now
+        disable_surveys: true, // Disable surveys
+        disable_compression: false,
+        cross_subdomain_cookie: false,
+        persistence: 'localStorage',
+        property_blacklist: [], // Don't blacklist any properties
         loaded: (posthog) => {
           if (process.env.NODE_ENV === 'development') {
-            console.log('PostHog initialized')
+            console.log('PostHog initialized successfully')
           }
-        }
+        },
+        // Disable remote config to prevent fetch errors
+        advanced_disable_decide: true,
+        // Reduce network requests
+        batch_flush_interval_ms: 5000,
+        request_batching: true
       })
+    }).catch((error) => {
+      console.warn('Failed to load PostHog:', error)
     })
   }
 }
