@@ -149,18 +149,25 @@ export function RestaurantCard({ restaurant }: RestaurantCardProps) {
               const target = e.target as HTMLImageElement
               target.src = '/placeholder-restaurant.svg'
             }}
+            unoptimized={info.image_url?.includes('unsplash') || false}
           />
 
           {/* Platform Badge */}
-          <div className="absolute top-3 right-3">
-            <Image
-              src={info.platform_badge}
-              alt={info.platform}
-              width={24}
-              height={24}
-              className="bg-white rounded p-1"
-            />
-          </div>
+          {info.platform_badge && (
+            <div className="absolute top-3 right-3">
+              <Image
+                src={info.platform_badge}
+                alt={info.platform}
+                width={24}
+                height={24}
+                className="bg-white rounded p-1"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Restaurant Content */}
