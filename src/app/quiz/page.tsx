@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { analytics } from '@/lib/analytics'
 
 type QuizResponse = {
@@ -109,6 +110,7 @@ export default function Quiz() {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [responses, setResponses] = useState<Partial<QuizResponse>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { saveQuizResponses, isAuthenticated } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -139,23 +141,25 @@ export default function Quiz() {
 
   const submitQuiz = async () => {
     setIsSubmitting(true)
-    
-    try {
-      const response = await fetch('/api/quiz/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(responses)
-      })
 
-      if (response.ok) {
-        analytics.track('quiz_completed', { responses })
-        router.push('/discover')
+    try {
+      analytics.track('quiz_completed', { responses, authenticated: isAuthenticated })
+
+      // Save to user profile if authenticated
+      if (isAuthenticated) {
+        const { success } = await saveQuizResponses(responses)
+        if (!success) {
+          console.warn('Failed to save quiz to user profile')
+        }
       } else {
-        throw new Error('Failed to save quiz')
+        // Save to localStorage for anonymous users
+        localStorage.setItem('forq_quiz_responses', JSON.stringify(responses))
       }
+
+      router.push('/discover')
     } catch (error) {
       console.error('Error submitting quiz:', error)
-      // For now, still redirect to discover
+      // Still redirect to discover even if save fails
       router.push('/discover')
     } finally {
       setIsSubmitting(false)

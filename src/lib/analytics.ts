@@ -1,35 +1,75 @@
-// Simple analytics stub (PostHog removed for deployment)
+import { PostHog } from 'posthog-node'
+
+// Client-side PostHog instance (lazy loaded)
+let posthogClient: any = null
+
 export const initPostHog = () => {
-  // No-op for now
+  if (typeof window !== 'undefined' && !posthogClient) {
+    // Dynamic import for client-side only
+    import('posthog-js').then((posthog) => {
+      posthogClient = posthog.default
+      posthogClient.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
+        person_profiles: 'identified_only',
+        capture_pageview: false, // We'll handle this manually
+        capture_pageleave: true,
+        loaded: (posthog) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('PostHog initialized')
+          }
+        }
+      })
+    })
+  }
 }
 
 export const analytics = {
   track: (event: string, properties?: Record<string, any>) => {
-    // Log to console in development
+    // Always log in development
     if (process.env.NODE_ENV === 'development') {
       console.log('Analytics track:', event, properties)
+    }
+
+    // Send to PostHog if available
+    if (posthogClient) {
+      posthogClient.capture(event, properties)
     }
   },
 
   identify: (userId: string, properties?: Record<string, any>) => {
-    // Log to console in development
     if (process.env.NODE_ENV === 'development') {
       console.log('Analytics identify:', userId, properties)
+    }
+
+    if (posthogClient) {
+      posthogClient.identify(userId, properties)
     }
   },
 
   page: (name?: string, properties?: Record<string, any>) => {
-    // Log to console in development
     if (process.env.NODE_ENV === 'development') {
       console.log('Analytics page:', name, properties)
+    }
+
+    if (posthogClient) {
+      posthogClient.capture('$pageview', {
+        $current_url: window.location.href,
+        page_name: name,
+        ...properties
+      })
     }
   }
 }
 
-// Server-side analytics helper (disabled for now to fix deployment)
+// Server-side analytics helper
 export const getServerAnalytics = async () => {
-  // Temporarily disabled to fix Vercel deployment
-  return null
+  if (!process.env.POSTHOG_KEY) {
+    return null
+  }
+
+  return new PostHog(process.env.POSTHOG_KEY, {
+    host: process.env.POSTHOG_HOST || 'https://app.posthog.com'
+  })
 }
 
 // Event types for type safety

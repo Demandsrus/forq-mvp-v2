@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { analytics } from '@/lib/analytics'
 import { RestaurantCard } from '@/components/RestaurantCard'
 import { resolveContext, inferTimeOfDay } from '@/lib/context'
+import { useAuth } from '@/contexts/AuthContext'
+import { getCurrentUserId } from '@/lib/auth'
 
 interface Restaurant {
   restaurant: {
@@ -55,6 +57,7 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sanitized, setSanitized] = useState(false)
+  const { user, isAuthenticated } = useAuth()
 
   useEffect(() => {
     loadRestaurants()
@@ -71,10 +74,30 @@ export default function DiscoverPage() {
       setLoading(true)
       setError('')
 
+      // Get current user ID (authenticated or anonymous)
+      const userId = await getCurrentUserId()
+
+      // Get user preferences if available
+      let userPreferences = null
+      if (isAuthenticated && user?.preferences) {
+        userPreferences = user.preferences
+      } else {
+        // Try to get from localStorage for anonymous users
+        const savedQuiz = localStorage.getItem('forq_quiz_responses')
+        if (savedQuiz) {
+          try {
+            userPreferences = JSON.parse(savedQuiz)
+          } catch (e) {
+            console.warn('Failed to parse saved quiz responses')
+          }
+        }
+      }
+
       // Get current context
       const context = resolveContext({
         time_of_day: inferTimeOfDay(),
-        topK: 5
+        topK: 5,
+        user_preferences: userPreferences
       })
 
       const response = await fetch('/api/restaurants/search', {
@@ -83,7 +106,7 @@ export default function DiscoverPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: 'anonymous', // TODO: Get from auth
+          userId,
           context
         })
       })

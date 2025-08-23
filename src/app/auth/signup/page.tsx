@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { analytics } from '@/lib/analytics'
 
 export default function SignUp() {
@@ -13,41 +13,37 @@ export default function SignUp() {
     password: '',
     confirmPassword: ''
   })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const { signUp, loading, error } = useAuth()
+  const [localError, setLocalError] = useState('')
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setLoading(true)
+    setLocalError('')
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
-      setLoading(false)
+      setLocalError('Passwords do not match')
       return
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters')
-      setLoading(false)
+      setLocalError('Password must be at least 6 characters')
       return
     }
 
-    try {
-      analytics.track('signup_attempted', { email: formData.email })
+    const { success, error: signUpError } = await signUp(
+      formData.email,
+      formData.password,
+      formData.fullName
+    )
 
-      // Sign up with Supabase
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-          }
-        }
-      })
+    if (success) {
+      // Redirect to quiz or discover page
+      router.push('/quiz')
+    } else if (signUpError) {
+      setLocalError(signUpError)
+    }
 
       if (signUpError) {
         setError(signUpError.message)
@@ -88,9 +84,9 @@ export default function SignUp() {
         </div>
 
         {/* Error Message */}
-        {error && (
+        {(error || localError) && (
           <div className="bg-red-900/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg">
-            {error}
+            {error || localError}
           </div>
         )}
 

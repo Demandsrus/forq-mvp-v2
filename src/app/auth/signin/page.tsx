@@ -3,50 +3,31 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { analytics } from '@/lib/analytics'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function SignIn() {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const { signIn, loading, error } = useAuth()
+  const [localError, setLocalError] = useState('')
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    setLoading(true)
+    setLocalError('')
 
-    try {
-      analytics.track('signin_attempted', { email: formData.email })
+    const { success, error: signInError } = await signIn(
+      formData.email,
+      formData.password
+    )
 
-      // Sign in with Supabase
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      })
-
-      if (signInError) {
-        setError(signInError.message)
-        setLoading(false)
-        return
-      }
-
-      if (data.user) {
-        analytics.track('signin_completed', {
-          email: formData.email,
-          userId: data.user.id
-        })
-
-        // Redirect to main app
-        router.push('/quiz')
-      }
-    } catch (err) {
-      setError('An unexpected error occurred')
-      setLoading(false)
+    if (success) {
+      // Redirect to discover page
+      router.push('/discover')
+    } else if (signInError) {
+      setLocalError(signInError)
     }
   }
 
@@ -68,9 +49,9 @@ export default function SignIn() {
         </div>
 
         {/* Error Message */}
-        {error && (
+        {(error || localError) && (
           <div className="bg-red-900/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg">
-            {error}
+            {error || localError}
           </div>
         )}
 
